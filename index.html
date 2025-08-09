@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Minuteur Séquentiel</title>
+<style>
+  body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; background: #f9f9f9; }
+  header { background: #333; color: white; padding: 10px; }
+  .hidden { display: none; }
+  button { margin: 5px; padding: 10px 15px; font-size: 14px; }
+  input, select { padding: 5px; margin: 5px; }
+  table { margin: auto; border-collapse: collapse; }
+  td, th { border: 1px solid #ccc; padding: 5px; }
+  svg { margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⏱ Minuteur Séquentiel</h1>
+</header>
+
+<!-- Page Configuration -->
+<div id="configPage">
+  <h2>Créer une séquence</h2>
+  <div>
+    <select id="stepType">
+      <option value="timer">Minuteur</option>
+      <option value="pause">Pause</option>
+    </select>
+    <input type="number" id="stepDuration" placeholder="Durée (s)" min="1">
+    <input type="text" id="stepLabel" placeholder="Label (optionnel)">
+    <button onclick="addStep()">Ajouter</button>
+  </div>
+  <table id="sequenceTable">
+    <thead><tr><th>Type</th><th>Durée (s)</th><th>Label</th><th>Actions</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <button onclick="startSequence()">▶ Lancer la séquence</button>
+</div>
+
+<!-- Page Minuteur -->
+<div id="timerPage" class="hidden">
+  <h2 id="currentLabel"></h2>
+  <svg width="200" height="200">
+    <circle r="90" cx="100" cy="100" stroke="#ccc" stroke-width="10" fill="none"/>
+    <circle id="progress" r="90" cx="100" cy="100" stroke="tomato" stroke-width="10"
+      fill="none" stroke-dasharray="565" stroke-dashoffset="565"
+      stroke-linecap="round" transform="rotate(-90 100 100)"/>
+    <text id="timeText" x="100" y="110" text-anchor="middle" font-size="24">0</text>
+  </svg>
+  <div>
+    <button onclick="pauseTimer()">⏸ Pause</button>
+    <button onclick="resumeTimer()">▶ Reprendre</button>
+    <button onclick="stopSequence()">⏹ Arrêter</button>
+  </div>
+</div>
+
+<script>
+let sequence = JSON.parse(localStorage.getItem("sequence") || "[]");
+let currentStepIndex = 0;
+let timerInterval = null;
+let pauseTime = null;
+const circumference = 2 * Math.PI * 90;
+document.getElementById("progress").style.strokeDasharray = circumference;
+
+function renderSequence() {
+  const tbody = document.querySelector("#sequenceTable tbody");
+  tbody.innerHTML = "";
+  sequence.forEach((step, i) => {
+    tbody.innerHTML += `<tr>
+      <td>${step.type}</td>
+      <td>${step.duration}</td>
+      <td>${step.label || ""}</td>
+      <td><button onclick="removeStep(${i})">🗑</button></td>
+    </tr>`;
+  });
+}
+function addStep() {
+  const type = document.getElementById("stepType").value;
+  const duration = parseInt(document.getElementById("stepDuration").value);
+  const label = document.getElementById("stepLabel").value;
+  if (!duration) return alert("Durée invalide");
+  sequence.push({ type, duration, label });
+  localStorage.setItem("sequence", JSON.stringify(sequence));
+  renderSequence();
+}
+function removeStep(i) {
+  sequence.splice(i, 1);
+  localStorage.setItem("sequence", JSON.stringify(sequence));
+  renderSequence();
+}
+
+function startSequence() {
+  if (sequence.length === 0) return alert("Aucune étape !");
+  localStorage.setItem("sequence", JSON.stringify(sequence));
+  currentStepIndex = 0;
+  document.getElementById("configPage").classList.add("hidden");
+  document.getElementById("timerPage").classList.remove("hidden");
+  startStep();
+}
+
+function startStep() {
+  if (currentStepIndex >= sequence.length) {
+    alert("Séquence terminée !");
+    stopSequence();
+    return;
+  }
+  const step = sequence[currentStepIndex];
+  document.getElementById("currentLabel").textContent = step.label || step.type;
+  startTimer(step.duration, updateDisplay, () => {
+    currentStepIndex++;
+    startStep();
+  });
+}
+
+function startTimer(duration, onUpdate, onComplete) {
+  let start = Date.now();
+  let end = start + duration * 1000;
+  timerInterval = setInterval(() => {
+    let now = Date.now();
+    let remaining = Math.max(0, Math.round((end - now) / 1000));
+    let progress = (duration - remaining) / duration;
+    onUpdate(remaining, progress);
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      onComplete();
+    }
+  }, 100);
+}
+function updateDisplay(remaining, progress) {
+  document.getElementById("timeText").textContent = remaining;
+  document.getElementById("progress").style.strokeDashoffset = circumference * (1 - progress);
+}
+function pauseTimer() {
+  clearInterval(timerInterval);
+  pauseTime = parseInt(document.getElementById("timeText").textContent);
+}
+function resumeTimer() {
+  if (pauseTime != null) {
+    startTimer(pauseTime, updateDisplay, () => {
+      currentStepIndex++;
+      startStep();
+    });
+    pauseTime = null;
+  }
+}
+function stopSequence() {
+  clearInterval(timerInterval);
+  document.getElementById("timerPage").classList.add("hidden");
+  document.getElementById("configPage").classList.remove("hidden");
+}
+renderSequence();
+</script>
+</body>
+</html>
