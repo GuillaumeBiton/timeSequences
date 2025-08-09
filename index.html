@@ -7,11 +7,25 @@
   body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; background: #f9f9f9; }
   header { background: #333; color: white; padding: 10px; }
   .hidden { display: none; }
-  button { margin: 5px; padding: 10px 15px; font-size: 14px; }
-  input, select { padding: 5px; margin: 5px; }
+  button { margin: 5px; padding: 10px 15px; font-size: 14px; cursor: pointer; }
+  input { padding: 5px; margin: 5px; }
   table { margin: auto; border-collapse: collapse; }
   td, th { border: 1px solid #ccc; padding: 5px; }
   svg { margin-top: 20px; }
+  .color-picker { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+  .color-option {
+    width: 25px; height: 25px; border-radius: 50%; border: 2px solid #fff;
+    cursor: pointer; box-shadow: 0 0 2px rgba(0,0,0,0.5);
+  }
+  .color-option.selected { border: 2px solid #000; }
+  #sequencePreview {
+    display: flex; justify-content: center; gap: 6px; margin: 15px 0; flex-wrap: wrap;
+  }
+  .preview-step {
+    width: 30px; height: 30px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; color: white; font-size: 12px;
+    font-weight: bold; box-shadow: 0 0 2px rgba(0,0,0,0.5);
+  }
 </style>
 </head>
 <body>
@@ -24,16 +38,14 @@
 <div id="configPage">
   <h2>Créer une séquence</h2>
   <div>
-    <select id="stepType">
-      <option value="timer">Minuteur</option>
-      <option value="pause">Pause</option>
-    </select>
     <input type="number" id="stepDuration" placeholder="Durée (s)" min="1">
     <input type="text" id="stepLabel" placeholder="Label (optionnel)">
+    <div class="color-picker" id="colorPicker"></div>
     <button onclick="addStep()">Ajouter</button>
   </div>
+  <div id="sequencePreview"></div>
   <table id="sequenceTable">
-    <thead><tr><th>Type</th><th>Durée (s)</th><th>Label</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Couleur</th><th>Durée (s)</th><th>Label</th><th>Actions</th></tr></thead>
     <tbody></tbody>
   </table>
   <button onclick="startSequence()">▶ Lancer la séquence</button>
@@ -61,30 +73,59 @@ let sequence = JSON.parse(localStorage.getItem("sequence") || "[]");
 let currentStepIndex = 0;
 let timerInterval = null;
 let pauseTime = null;
+let selectedColor = "#ff6347";
 const circumference = 2 * Math.PI * 90;
 document.getElementById("progress").style.strokeDasharray = circumference;
+
+// Couleurs proposées
+const colors = ["#ff6347", "#4caf50", "#2196f3", "#ff9800", "#9c27b0", "#00bcd4"];
+const colorPicker = document.getElementById("colorPicker");
+
+colors.forEach(color => {
+  const div = document.createElement("div");
+  div.classList.add("color-option");
+  div.style.backgroundColor = color;
+  div.onclick = () => {
+    selectedColor = color;
+    document.querySelectorAll(".color-option").forEach(c => c.classList.remove("selected"));
+    div.classList.add("selected");
+  };
+  if (color === selectedColor) div.classList.add("selected");
+  colorPicker.appendChild(div);
+});
 
 function renderSequence() {
   const tbody = document.querySelector("#sequenceTable tbody");
   tbody.innerHTML = "";
+  const preview = document.getElementById("sequencePreview");
+  preview.innerHTML = "";
+  
   sequence.forEach((step, i) => {
+    // Tableau
     tbody.innerHTML += `<tr>
-      <td>${step.type}</td>
+      <td><div style="width:20px;height:20px;background:${step.color};border-radius:50%;margin:auto"></div></td>
       <td>${step.duration}</td>
       <td>${step.label || ""}</td>
       <td><button onclick="removeStep(${i})">🗑</button></td>
     </tr>`;
+    // Aperçu
+    const div = document.createElement("div");
+    div.classList.add("preview-step");
+    div.style.backgroundColor = step.color;
+    div.textContent = step.duration;
+    preview.appendChild(div);
   });
 }
+
 function addStep() {
-  const type = document.getElementById("stepType").value;
   const duration = parseInt(document.getElementById("stepDuration").value);
   const label = document.getElementById("stepLabel").value;
   if (!duration) return alert("Durée invalide");
-  sequence.push({ type, duration, label });
+  sequence.push({ duration, label, color: selectedColor });
   localStorage.setItem("sequence", JSON.stringify(sequence));
   renderSequence();
 }
+
 function removeStep(i) {
   sequence.splice(i, 1);
   localStorage.setItem("sequence", JSON.stringify(sequence));
@@ -107,7 +148,8 @@ function startStep() {
     return;
   }
   const step = sequence[currentStepIndex];
-  document.getElementById("currentLabel").textContent = step.label || step.type;
+  document.getElementById("currentLabel").textContent = step.label || `Étape ${currentStepIndex+1}`;
+  document.getElementById("progress").setAttribute("stroke", step.color);
   startTimer(step.duration, updateDisplay, () => {
     currentStepIndex++;
     startStep();
@@ -128,14 +170,17 @@ function startTimer(duration, onUpdate, onComplete) {
     }
   }, 100);
 }
+
 function updateDisplay(remaining, progress) {
   document.getElementById("timeText").textContent = remaining;
   document.getElementById("progress").style.strokeDashoffset = circumference * (1 - progress);
 }
+
 function pauseTimer() {
   clearInterval(timerInterval);
   pauseTime = parseInt(document.getElementById("timeText").textContent);
 }
+
 function resumeTimer() {
   if (pauseTime != null) {
     startTimer(pauseTime, updateDisplay, () => {
@@ -145,11 +190,13 @@ function resumeTimer() {
     pauseTime = null;
   }
 }
+
 function stopSequence() {
   clearInterval(timerInterval);
   document.getElementById("timerPage").classList.add("hidden");
   document.getElementById("configPage").classList.remove("hidden");
 }
+
 renderSequence();
 </script>
 </body>
