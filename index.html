@@ -2,265 +2,199 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Minuteur Séquentiel</title>
 <style>
-  body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; background: #f9f9f9; }
-  header { background: #333; color: white; padding: 10px; }
-  .hidden { display: none; }
-  button { margin: 5px; padding: 10px 15px; font-size: 14px; cursor: pointer; }
-  input { padding: 5px; margin: 5px; }
-  table { margin: auto; border-collapse: collapse; }
-  td, th { border: 1px solid #ccc; padding: 5px; }
-  svg { margin-top: 20px; }
-  .color-picker { display: flex; justify-content: center; gap: 8px; margin-top: 10px; }
+  body {
+    font-family: sans-serif;
+    margin: 0;
+    background: #f5f5f5;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    gap: 15px;
+    max-width: 500px;
+    margin: auto;
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  label {
+    font-size: 16px;
+    margin-bottom: 5px;
+    display: block;
+  }
+  input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+  }
+  .color-picker {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
   .color-option {
-    width: 25px; height: 25px; border-radius: 50%; border: 2px solid #fff;
-    cursor: pointer; box-shadow: 0 0 2px rgba(0,0,0,0.5);
-  }
-  .color-option.selected { border: 2px solid #000; }
-  #sequencePreview {
-    display: flex; justify-content: center; gap: 6px; margin: 15px 0; flex-wrap: wrap;
-  }
-  .preview-step {
-    width: 30px; height: 30px; border-radius: 50%; display: flex;
-    align-items: center; justify-content: center; color: white; font-size: 12px;
-    font-weight: bold; box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid transparent;
     cursor: pointer;
   }
-  /* Popup d'édition */
-  #editPopup {
-    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    background: white; padding: 15px; border: 1px solid #ccc;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3); z-index: 999;
+  .color-option.selected {
+    border-color: #000;
   }
-  #editPopup h3 { margin-top: 0; }
+  button {
+    padding: 12px;
+    font-size: 18px;
+    background: #007aff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  button:active {
+    opacity: 0.8;
+  }
+  .sequence {
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+  }
+  .timer-screen {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    flex-direction: column;
+    background: white;
+  }
+  svg {
+    max-width: 90%;
+  }
+  #timeText {
+    font-size: 3rem;
+    font-weight: bold;
+    fill: #333;
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>⏱ Minuteur Séquentiel</h1>
-</header>
-
-<!-- Page Configuration -->
-<div id="configPage">
-  <h2>Créer une séquence</h2>
-  <div>
-    <input type="number" id="stepDuration" placeholder="Durée (s)" min="1">
-    <input type="text" id="stepLabel" placeholder="Label (optionnel)">
-    <div class="color-picker" id="colorPicker"></div>
-    <button onclick="addStep()">Ajouter</button>
-  </div>
-  <div id="sequencePreview"></div>
-  <table id="sequenceTable">
-    <thead><tr><th>Couleur</th><th>Durée (s)</th><th>Label</th><th>Actions</th></tr></thead>
-    <tbody></tbody>
-  </table>
-  <button onclick="startSequence()">▶ Lancer la séquence</button>
+<div id="configScreen" class="container">
+  <h1>Créer Séquence</h1>
+  
+  <label>Durée (secondes)</label>
+  <input type="number" id="durationInput" value="30" min="1">
+  
+  <label>Couleur</label>
+  <div id="colorPicker" class="color-picker"></div>
+  
+  <button id="addStep">Ajouter étape</button>
+  <div id="sequenceList" class="sequence"></div>
+  <button id="startSequence">Démarrer</button>
 </div>
 
-<!-- Page Minuteur -->
-<div id="timerPage" class="hidden">
-  <h2 id="currentLabel"></h2>
-  <svg width="200" height="200">
-    <circle r="90" cx="100" cy="100" stroke="#ccc" stroke-width="10" fill="none"/>
-    <circle id="progress" r="90" cx="100" cy="100" stroke="tomato" stroke-width="10"
-      fill="none" stroke-dasharray="565" stroke-dashoffset="565"
-      stroke-linecap="round" transform="rotate(-90 100 100)"/>
-    <text id="timeText" x="100" y="110" text-anchor="middle" font-size="24">0</text>
+<div id="timerScreen" class="timer-screen">
+  <svg width="250" height="250">
+    <circle r="110" cx="125" cy="125" stroke="#eee" stroke-width="15" fill="none"/>
+    <circle id="progress" r="110" cx="125" cy="125" stroke="tomato" stroke-width="15" fill="none"
+      stroke-dasharray="690" stroke-dashoffset="690" stroke-linecap="round"
+      transform="rotate(-90 125 125)" />
+    <text id="timeText" x="125" y="135" text-anchor="middle">0</text>
   </svg>
-  <div>
-    <button onclick="pauseTimer()">⏸ Pause</button>
-    <button onclick="resumeTimer()">▶ Reprendre</button>
-    <button onclick="stopSequence()">⏹ Arrêter</button>
-  </div>
-</div>
-
-<!-- Popup Edition -->
-<div id="editPopup" class="hidden">
-  <h3>Modifier l'étape</h3>
-  <input type="number" id="editDuration" placeholder="Durée (s)" min="1">
-  <input type="text" id="editLabel" placeholder="Label">
-  <div class="color-picker" id="editColorPicker"></div>
-  <div>
-    <button onclick="saveEdit()">💾 Sauvegarder</button>
-    <button onclick="closeEdit()">❌ Annuler</button>
-  </div>
 </div>
 
 <script>
-let sequence = JSON.parse(localStorage.getItem("sequence") || "[]");
-let currentStepIndex = 0;
-let timerInterval = null;
-let pauseTime = null;
-let selectedColor = "#ff6347";
-let editIndex = null;
-const circumference = 2 * Math.PI * 90;
-document.getElementById("progress").style.strokeDasharray = circumference;
+const colors = ["tomato", "dodgerblue", "mediumseagreen", "gold", "orchid", "slategray"];
+let selectedColor = colors[0];
+let sequence = [];
 
-// Couleurs proposées
-const colors = ["#ff6347", "#4caf50", "#2196f3", "#ff9800", "#9c27b0", "#00bcd4"];
-
-// Init color picker principal
 const colorPicker = document.getElementById("colorPicker");
 colors.forEach(color => {
   const div = document.createElement("div");
   div.classList.add("color-option");
   div.style.backgroundColor = color;
-  div.onclick = () => {
-    selectedColor = color;
-    document.querySelectorAll("#colorPicker .color-option").forEach(c => c.classList.remove("selected"));
-    div.classList.add("selected");
-  };
   if (color === selectedColor) div.classList.add("selected");
+  div.addEventListener("click", () => {
+    document.querySelectorAll(".color-option").forEach(opt => opt.classList.remove("selected"));
+    div.classList.add("selected");
+    selectedColor = color;
+  });
   colorPicker.appendChild(div);
 });
 
-// Init color picker pour édition
-const editColorPicker = document.getElementById("editColorPicker");
-colors.forEach(color => {
-  const div = document.createElement("div");
-  div.classList.add("color-option");
-  div.style.backgroundColor = color;
-  div.onclick = () => {
-    selectedColor = color;
-    document.querySelectorAll("#editColorPicker .color-option").forEach(c => c.classList.remove("selected"));
-    div.classList.add("selected");
-  };
-  editColorPicker.appendChild(div);
+document.getElementById("addStep").addEventListener("click", () => {
+  const duration = parseInt(document.getElementById("durationInput").value);
+  if (duration > 0) {
+    sequence.push({ duration, color: selectedColor });
+    renderSequence();
+  }
 });
 
 function renderSequence() {
-  const tbody = document.querySelector("#sequenceTable tbody");
-  tbody.innerHTML = "";
-  const preview = document.getElementById("sequencePreview");
-  preview.innerHTML = "";
-  
+  const list = document.getElementById("sequenceList");
+  list.innerHTML = "";
   sequence.forEach((step, i) => {
-    // Tableau
-    tbody.innerHTML += `<tr>
-      <td><div style="width:20px;height:20px;background:${step.color};border-radius:50%;margin:auto"></div></td>
-      <td>${step.duration}</td>
-      <td>${step.label || ""}</td>
-      <td><button onclick="removeStep(${i})">🗑</button></td>
-    </tr>`;
-    // Aperçu interactif
     const div = document.createElement("div");
-    div.classList.add("preview-step");
-    div.style.backgroundColor = step.color;
-    div.textContent = step.duration;
-    div.onclick = () => openEdit(i);
-    preview.appendChild(div);
+    div.textContent = `Étape ${i+1} : ${step.duration}s`;
+    div.style.color = step.color;
+    list.appendChild(div);
   });
 }
 
-function addStep() {
-  const duration = parseInt(document.getElementById("stepDuration").value);
-  const label = document.getElementById("stepLabel").value;
-  if (!duration) return alert("Durée invalide");
-  sequence.push({ duration, label, color: selectedColor });
-  localStorage.setItem("sequence", JSON.stringify(sequence));
-  renderSequence();
-}
-
-function removeStep(i) {
-  sequence.splice(i, 1);
-  localStorage.setItem("sequence", JSON.stringify(sequence));
-  renderSequence();
-}
-
-function openEdit(index) {
-  editIndex = index;
-  const step = sequence[index];
-  document.getElementById("editDuration").value = step.duration;
-  document.getElementById("editLabel").value = step.label || "";
-  selectedColor = step.color;
-  document.querySelectorAll("#editColorPicker .color-option").forEach(c => {
-    c.classList.toggle("selected", c.style.backgroundColor === step.color);
-  });
-  document.getElementById("editPopup").classList.remove("hidden");
-}
-
-function saveEdit() {
-  const duration = parseInt(document.getElementById("editDuration").value);
-  const label = document.getElementById("editLabel").value;
-  if (!duration) return alert("Durée invalide");
-  sequence[editIndex] = { duration, label, color: selectedColor };
-  localStorage.setItem("sequence", JSON.stringify(sequence));
-  renderSequence();
-  closeEdit();
-}
-
-function closeEdit() {
-  document.getElementById("editPopup").classList.add("hidden");
-}
+document.getElementById("startSequence").addEventListener("click", () => {
+  if (sequence.length > 0) {
+    document.getElementById("configScreen").style.display = "none";
+    document.getElementById("timerScreen").style.display = "flex";
+    startSequence();
+  }
+});
 
 function startSequence() {
-  if (sequence.length === 0) return alert("Aucune étape !");
-  localStorage.setItem("sequence", JSON.stringify(sequence));
-  currentStepIndex = 0;
-  document.getElementById("configPage").classList.add("hidden");
-  document.getElementById("timerPage").classList.remove("hidden");
-  startStep();
-}
-
-function startStep() {
-  if (currentStepIndex >= sequence.length) {
-    alert("Séquence terminée !");
-    stopSequence();
-    return;
+  let index = 0;
+  function nextStep() {
+    if (index >= sequence.length) {
+      alert("Séquence terminée !");
+      location.reload();
+      return;
+    }
+    const step = sequence[index];
+    runTimer(step.duration, step.color, () => {
+      index++;
+      nextStep();
+    });
   }
-  const step = sequence[currentStepIndex];
-  document.getElementById("currentLabel").textContent = step.label || `Étape ${currentStepIndex+1}`;
-  document.getElementById("progress").setAttribute("stroke", step.color);
-  startTimer(step.duration, updateDisplay, () => {
-    currentStepIndex++;
-    startStep();
-  });
+  nextStep();
 }
 
-function startTimer(duration, onUpdate, onComplete) {
+function runTimer(duration, color, callback) {
+  const circle = document.getElementById("progress");
+  const timeText = document.getElementById("timeText");
+  const circumference = 2 * Math.PI * 110;
+  
+  circle.style.stroke = color;
+  circle.style.strokeDasharray = circumference;
+  circle.style.strokeDashoffset = circumference;
+  
   let start = Date.now();
   let end = start + duration * 1000;
-  timerInterval = setInterval(() => {
+  let timer = setInterval(() => {
     let now = Date.now();
     let remaining = Math.max(0, Math.round((end - now) / 1000));
     let progress = (duration - remaining) / duration;
-    onUpdate(remaining, progress);
+    circle.style.strokeDashoffset = circumference * (1 - progress);
+    timeText.textContent = remaining;
     if (remaining <= 0) {
-      clearInterval(timerInterval);
-      onComplete();
+      clearInterval(timer);
+      callback();
     }
   }, 100);
 }
-
-function updateDisplay(remaining, progress) {
-  document.getElementById("timeText").textContent = remaining;
-  document.getElementById("progress").style.strokeDashoffset = circumference * (1 - progress);
-}
-
-function pauseTimer() {
-  clearInterval(timerInterval);
-  pauseTime = parseInt(document.getElementById("timeText").textContent);
-}
-
-function resumeTimer() {
-  if (pauseTime != null) {
-    startTimer(pauseTime, updateDisplay, () => {
-      currentStepIndex++;
-      startStep();
-    });
-    pauseTime = null;
-  }
-}
-
-function stopSequence() {
-  clearInterval(timerInterval);
-  document.getElementById("timerPage").classList.add("hidden");
-  document.getElementById("configPage").classList.remove("hidden");
-}
-
-renderSequence();
 </script>
+
 </body>
 </html>
