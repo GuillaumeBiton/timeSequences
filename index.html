@@ -1,200 +1,54 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Minuteur Séquentiel</title>
-<style>
-  body {
-    font-family: sans-serif;
-    margin: 0;
-    background: #f5f5f5;
-  }
-  .container {
-    display: flex;
-    flex-direction: column;
-    padding: 15px;
-    gap: 15px;
-    max-width: 500px;
-    margin: auto;
-  }
-  h1 {
-    text-align: center;
-    margin-bottom: 10px;
-  }
-  label {
-    font-size: 16px;
-    margin-bottom: 5px;
-    display: block;
-  }
-  input[type="number"] {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-  }
-  .color-picker {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .color-option {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 3px solid transparent;
-    cursor: pointer;
-  }
-  .color-option.selected {
-    border-color: #000;
-  }
-  button {
-    padding: 12px;
-    font-size: 18px;
-    background: #007aff;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  button:active {
-    opacity: 0.8;
-  }
-  .sequence {
-    background: white;
-    padding: 10px;
-    border-radius: 6px;
-  }
-  .timer-screen {
-    display: none;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    flex-direction: column;
-    background: white;
-  }
-  svg {
-    max-width: 90%;
-  }
-  #timeText {
-    font-size: 3rem;
-    font-weight: bold;
-    fill: #333;
-  }
-</style>
+<link rel="manifest" href="/manifest.json">
+<link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<div id="updateBanner" class="hidden">
+  <div class="banner-inner">
+    Nouvelle version disponible — <button id="updateBtn">Mettre à jour</button>
+    <button id="dismissUpdate" class="muted">Ignorer</button>
+  </div>
+</div>
 
 <div id="configScreen" class="container">
-  <h1>Créer Séquence</h1>
-  
+  <h1>Minuteur Séquentiel</h1>
+
   <label>Durée (secondes)</label>
   <input type="number" id="durationInput" value="30" min="1">
-  
+
   <label>Couleur</label>
   <div id="colorPicker" class="color-picker"></div>
-  
+
+  <label>Label (optionnel)</label>
+  <input type="text" id="labelInput" placeholder="Ex. Travail">
+
   <button id="addStep">Ajouter étape</button>
   <div id="sequenceList" class="sequence"></div>
   <button id="startSequence">Démarrer</button>
 </div>
 
-<div id="timerScreen" class="timer-screen">
-  <svg width="250" height="250">
+<div id="timerScreen" class="timer-screen hidden">
+  <h2 id="currentLabel"></h2>
+  <svg width="250" height="250" viewBox="0 0 250 250" preserveAspectRatio="xMidYMid meet">
     <circle r="110" cx="125" cy="125" stroke="#eee" stroke-width="15" fill="none"/>
     <circle id="progress" r="110" cx="125" cy="125" stroke="tomato" stroke-width="15" fill="none"
       stroke-dasharray="690" stroke-dashoffset="690" stroke-linecap="round"
       transform="rotate(-90 125 125)" />
     <text id="timeText" x="125" y="135" text-anchor="middle">0</text>
   </svg>
+
+  <div class="timer-controls">
+    <button id="pauseBtn">⏸ Pause</button>
+    <button id="resumeBtn">▶ Reprendre</button>
+    <button id="stopBtn">⏹ Arrêter</button>
+  </div>
 </div>
 
-<script>
-const colors = ["tomato", "dodgerblue", "mediumseagreen", "gold", "orchid", "slategray"];
-let selectedColor = colors[0];
-let sequence = [];
-
-const colorPicker = document.getElementById("colorPicker");
-colors.forEach(color => {
-  const div = document.createElement("div");
-  div.classList.add("color-option");
-  div.style.backgroundColor = color;
-  if (color === selectedColor) div.classList.add("selected");
-  div.addEventListener("click", () => {
-    document.querySelectorAll(".color-option").forEach(opt => opt.classList.remove("selected"));
-    div.classList.add("selected");
-    selectedColor = color;
-  });
-  colorPicker.appendChild(div);
-});
-
-document.getElementById("addStep").addEventListener("click", () => {
-  const duration = parseInt(document.getElementById("durationInput").value);
-  if (duration > 0) {
-    sequence.push({ duration, color: selectedColor });
-    renderSequence();
-  }
-});
-
-function renderSequence() {
-  const list = document.getElementById("sequenceList");
-  list.innerHTML = "";
-  sequence.forEach((step, i) => {
-    const div = document.createElement("div");
-    div.textContent = `Étape ${i+1} : ${step.duration}s`;
-    div.style.color = step.color;
-    list.appendChild(div);
-  });
-}
-
-document.getElementById("startSequence").addEventListener("click", () => {
-  if (sequence.length > 0) {
-    document.getElementById("configScreen").style.display = "none";
-    document.getElementById("timerScreen").style.display = "flex";
-    startSequence();
-  }
-});
-
-function startSequence() {
-  let index = 0;
-  function nextStep() {
-    if (index >= sequence.length) {
-      alert("Séquence terminée !");
-      location.reload();
-      return;
-    }
-    const step = sequence[index];
-    runTimer(step.duration, step.color, () => {
-      index++;
-      nextStep();
-    });
-  }
-  nextStep();
-}
-
-function runTimer(duration, color, callback) {
-  const circle = document.getElementById("progress");
-  const timeText = document.getElementById("timeText");
-  const circumference = 2 * Math.PI * 110;
-  
-  circle.style.stroke = color;
-  circle.style.strokeDasharray = circumference;
-  circle.style.strokeDashoffset = circumference;
-  
-  let start = Date.now();
-  let end = start + duration * 1000;
-  let timer = setInterval(() => {
-    let now = Date.now();
-    let remaining = Math.max(0, Math.round((end - now) / 1000));
-    let progress = (duration - remaining) / duration;
-    circle.style.strokeDashoffset = circumference * (1 - progress);
-    timeText.textContent = remaining;
-    if (remaining <= 0) {
-      clearInterval(timer);
-      callback();
-    }
-  }, 100);
-}
-</script>
-
+<script src="/app.js"></script>
 </body>
 </html>
