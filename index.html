@@ -25,7 +25,15 @@
     width: 30px; height: 30px; border-radius: 50%; display: flex;
     align-items: center; justify-content: center; color: white; font-size: 12px;
     font-weight: bold; box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    cursor: pointer;
   }
+  /* Popup d'édition */
+  #editPopup {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: white; padding: 15px; border: 1px solid #ccc;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3); z-index: 999;
+  }
+  #editPopup h3 { margin-top: 0; }
 </style>
 </head>
 <body>
@@ -68,30 +76,58 @@
   </div>
 </div>
 
+<!-- Popup Edition -->
+<div id="editPopup" class="hidden">
+  <h3>Modifier l'étape</h3>
+  <input type="number" id="editDuration" placeholder="Durée (s)" min="1">
+  <input type="text" id="editLabel" placeholder="Label">
+  <div class="color-picker" id="editColorPicker"></div>
+  <div>
+    <button onclick="saveEdit()">💾 Sauvegarder</button>
+    <button onclick="closeEdit()">❌ Annuler</button>
+  </div>
+</div>
+
 <script>
 let sequence = JSON.parse(localStorage.getItem("sequence") || "[]");
 let currentStepIndex = 0;
 let timerInterval = null;
 let pauseTime = null;
 let selectedColor = "#ff6347";
+let editIndex = null;
 const circumference = 2 * Math.PI * 90;
 document.getElementById("progress").style.strokeDasharray = circumference;
 
 // Couleurs proposées
 const colors = ["#ff6347", "#4caf50", "#2196f3", "#ff9800", "#9c27b0", "#00bcd4"];
-const colorPicker = document.getElementById("colorPicker");
 
+// Init color picker principal
+const colorPicker = document.getElementById("colorPicker");
 colors.forEach(color => {
   const div = document.createElement("div");
   div.classList.add("color-option");
   div.style.backgroundColor = color;
   div.onclick = () => {
     selectedColor = color;
-    document.querySelectorAll(".color-option").forEach(c => c.classList.remove("selected"));
+    document.querySelectorAll("#colorPicker .color-option").forEach(c => c.classList.remove("selected"));
     div.classList.add("selected");
   };
   if (color === selectedColor) div.classList.add("selected");
   colorPicker.appendChild(div);
+});
+
+// Init color picker pour édition
+const editColorPicker = document.getElementById("editColorPicker");
+colors.forEach(color => {
+  const div = document.createElement("div");
+  div.classList.add("color-option");
+  div.style.backgroundColor = color;
+  div.onclick = () => {
+    selectedColor = color;
+    document.querySelectorAll("#editColorPicker .color-option").forEach(c => c.classList.remove("selected"));
+    div.classList.add("selected");
+  };
+  editColorPicker.appendChild(div);
 });
 
 function renderSequence() {
@@ -108,11 +144,12 @@ function renderSequence() {
       <td>${step.label || ""}</td>
       <td><button onclick="removeStep(${i})">🗑</button></td>
     </tr>`;
-    // Aperçu
+    // Aperçu interactif
     const div = document.createElement("div");
     div.classList.add("preview-step");
     div.style.backgroundColor = step.color;
     div.textContent = step.duration;
+    div.onclick = () => openEdit(i);
     preview.appendChild(div);
   });
 }
@@ -130,6 +167,32 @@ function removeStep(i) {
   sequence.splice(i, 1);
   localStorage.setItem("sequence", JSON.stringify(sequence));
   renderSequence();
+}
+
+function openEdit(index) {
+  editIndex = index;
+  const step = sequence[index];
+  document.getElementById("editDuration").value = step.duration;
+  document.getElementById("editLabel").value = step.label || "";
+  selectedColor = step.color;
+  document.querySelectorAll("#editColorPicker .color-option").forEach(c => {
+    c.classList.toggle("selected", c.style.backgroundColor === step.color);
+  });
+  document.getElementById("editPopup").classList.remove("hidden");
+}
+
+function saveEdit() {
+  const duration = parseInt(document.getElementById("editDuration").value);
+  const label = document.getElementById("editLabel").value;
+  if (!duration) return alert("Durée invalide");
+  sequence[editIndex] = { duration, label, color: selectedColor };
+  localStorage.setItem("sequence", JSON.stringify(sequence));
+  renderSequence();
+  closeEdit();
+}
+
+function closeEdit() {
+  document.getElementById("editPopup").classList.add("hidden");
 }
 
 function startSequence() {
